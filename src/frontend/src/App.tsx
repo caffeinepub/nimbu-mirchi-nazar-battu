@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { LogIn, ShieldAlert, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import type React from "react";
 
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
@@ -20,7 +21,6 @@ import { OrdersPage } from "./components/customer/OrdersPage";
 import { ShopPage } from "./components/customer/ShopPage";
 import { SubscriptionsPage } from "./components/customer/SubscriptionsPage";
 
-import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { mockBackend } from "./mocks/backend";
 
 type View =
@@ -105,11 +105,110 @@ function LegalPageViewer({
   );
 }
 
+// Admin PIN - change this to your secret PIN
+const ADMIN_PIN = "nimbu2025";
+
 // Check if current URL is the secret admin path
 function isAdminUrl(): boolean {
   const hash = window.location.hash;
   const search = window.location.search;
   return hash === "#/admin-panel" || search.includes("admin-panel");
+}
+
+// Admin PIN Login Screen
+function AdminPinScreen({
+  onSuccess,
+  onBack,
+}: { onSuccess: () => void; onBack: () => void }) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pin === ADMIN_PIN) {
+      sessionStorage.setItem("adminAuth", "true");
+      onSuccess();
+    } else {
+      setError(true);
+      setPin("");
+      setTimeout(() => setError(false), 2000);
+    }
+  };
+
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ background: "oklch(0.16 0.05 155)" }}
+    >
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div
+            className="inline-flex h-16 w-16 items-center justify-center rounded-2xl mb-4"
+            style={{ background: "oklch(0.62 0.18 45)" }}
+          >
+            <ShieldAlert className="h-8 w-8 text-white" />
+          </div>
+          <h1
+            className="font-display text-2xl font-bold mb-1"
+            style={{ color: "oklch(0.92 0.04 85)" }}
+          >
+            Admin Panel
+          </h1>
+          <p className="text-sm" style={{ color: "oklch(0.6 0.06 155)" }}>
+            Nimbu Mirchi Nazar Battu
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <input
+              type="password"
+              placeholder="Admin Password daalen"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none border-2 transition-colors"
+              style={{
+                background: "oklch(0.22 0.04 155)",
+                color: "oklch(0.92 0.04 85)",
+                borderColor: error
+                  ? "oklch(0.55 0.2 25)"
+                  : "oklch(0.3 0.05 155)",
+              }}
+            />
+            {error && (
+              <p
+                className="text-xs mt-2"
+                style={{ color: "oklch(0.65 0.2 25)" }}
+              >
+                Galat password. Dobara try karein.
+              </p>
+            )}
+          </div>
+          <Button
+            type="submit"
+            className="w-full py-3 font-semibold"
+            style={{
+              background: "oklch(0.62 0.18 45)",
+              color: "white",
+              border: "none",
+            }}
+          >
+            <LogIn className="h-4 w-4 mr-2" />
+            Admin Panel Kholein
+          </Button>
+        </form>
+
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-4 block mx-auto text-xs"
+          style={{ color: "oklch(0.55 0.06 155)" }}
+        >
+          ← Store par wapas jaayein
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
@@ -119,11 +218,9 @@ export default function App() {
   const [adminSection, setAdminSection] = useState<AdminSection>("dashboard");
   const [legalSlug, setLegalSlug] = useState("terms");
   const [popupDismissed, setPopupDismissed] = useState(false);
-  const [isAdminChecked, setIsAdminChecked] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  const { identity, login, isInitializing } = useInternetIdentity();
-  const isLoggedIn = !!identity && !identity.getPrincipal().isAnonymous();
+  const [adminAuthenticated, setAdminAuthenticated] = useState(
+    () => sessionStorage.getItem("adminAuth") === "true",
+  );
 
   // CMS data
   const { data: cmsData } = useQuery({
@@ -131,29 +228,14 @@ export default function App() {
     queryFn: () => mockBackend.getCmsData(),
   });
 
-  // Check admin status when identity changes
+  // Keep mock backend in sync
   useEffect(() => {
-    if (isLoggedIn) {
-      // In demo mode, set admin = true when logged in
-      mockBackend.setAdminMode(true);
-      void mockBackend.isCallerAdmin().then((result) => {
-        setIsAdmin(result);
-        setIsAdminChecked(true);
-      });
-    } else {
-      mockBackend.setAdminMode(false);
-      setIsAdmin(false);
-      setIsAdminChecked(false);
-    }
-  }, [isLoggedIn]);
+    mockBackend.setAdminMode(adminAuthenticated);
+  }, [adminAuthenticated]);
 
   const navigate = (view: View, slug?: string) => {
     if (view === "legal" && slug) {
       setLegalSlug(slug);
-    }
-    if (view === "admin" && !isLoggedIn) {
-      // Don't navigate to admin if not logged in
-      return;
     }
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -174,93 +256,15 @@ export default function App() {
 
   // Admin panel renders full screen
   if (currentView === "admin") {
-    if (!isLoggedIn && !isInitializing) {
+    if (!adminAuthenticated) {
       return (
-        <div
-          className="min-h-screen flex items-center justify-center p-4"
-          style={{ background: "oklch(0.16 0.05 155)" }}
-        >
-          <div className="text-center max-w-sm">
-            <ShieldAlert
-              className="h-16 w-16 mx-auto mb-4"
-              style={{ color: "oklch(0.62 0.18 45)" }}
-            />
-            <h2
-              className="font-display text-2xl font-bold mb-2"
-              style={{ color: "oklch(0.9 0.04 85)" }}
-            >
-              Access Denied
-            </h2>
-            <p
-              className="text-sm mb-6"
-              style={{ color: "oklch(0.6 0.06 155)" }}
-            >
-              Admin panel ke liye pehle login karein
-            </p>
-            <Button
-              onClick={login}
-              className="gap-2"
-              style={{
-                background: "oklch(0.62 0.18 45)",
-                color: "white",
-                border: "none",
-              }}
-            >
-              <LogIn className="h-4 w-4" />
-              Login with Internet Identity
-            </Button>
-            <button
-              type="button"
-              onClick={() => {
-                window.location.hash = "";
-                setCurrentView("home");
-              }}
-              className="mt-3 block mx-auto text-xs"
-              style={{ color: "oklch(0.55 0.06 155)" }}
-            >
-              ← Back to Store
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    if (isLoggedIn && isAdminChecked && !isAdmin) {
-      return (
-        <div
-          className="min-h-screen flex items-center justify-center p-4"
-          style={{ background: "oklch(0.16 0.05 155)" }}
-        >
-          <div className="text-center max-w-sm">
-            <ShieldAlert
-              className="h-16 w-16 mx-auto mb-4"
-              style={{ color: "oklch(0.55 0.2 25)" }}
-            />
-            <h2
-              className="font-display text-2xl font-bold mb-2"
-              style={{ color: "oklch(0.9 0.04 85)" }}
-            >
-              Access Denied
-            </h2>
-            <p
-              className="text-sm mb-6"
-              style={{ color: "oklch(0.6 0.06 155)" }}
-            >
-              Aapko admin access nahi diya gaya hai
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                window.location.hash = "";
-                setCurrentView("home");
-              }}
-              className="text-sm"
-              style={{ color: "oklch(0.62 0.18 45)" }}
-            >
-              ← Back to Store
-            </button>
-          </div>
-        </div>
+        <AdminPinScreen
+          onSuccess={() => setAdminAuthenticated(true)}
+          onBack={() => {
+            window.location.hash = "";
+            setCurrentView("home");
+          }}
+        />
       );
     }
 
