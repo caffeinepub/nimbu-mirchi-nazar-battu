@@ -7,10 +7,12 @@ export interface CartItem {
 }
 
 export type OrderType = "OneTime" | "Subscription";
+export type PaymentMethod = "Stripe" | "COD";
 
 interface CartState {
   items: CartItem[];
   orderType: OrderType;
+  paymentMethod: PaymentMethod;
 
   // Actions
   addItem: (product: Product) => void;
@@ -18,6 +20,7 @@ interface CartState {
   updateQuantity: (productId: bigint, quantity: number) => void;
   clearCart: () => void;
   setOrderType: (type: OrderType) => void;
+  setPaymentMethod: (method: PaymentMethod) => void;
 
   // Computed
   totalItems: () => number;
@@ -27,6 +30,7 @@ interface CartState {
 export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   orderType: "OneTime",
+  paymentMethod: "Stripe",
 
   addItem: (product: Product) => {
     set((state) => {
@@ -67,6 +71,8 @@ export const useCartStore = create<CartState>((set, get) => ({
   clearCart: () => set({ items: [] }),
 
   setOrderType: (type: OrderType) => set({ orderType: type }),
+
+  setPaymentMethod: (method: PaymentMethod) => set({ paymentMethod: method }),
 
   totalItems: () => {
     return get().items.reduce((sum, item) => sum + item.quantity, 0);

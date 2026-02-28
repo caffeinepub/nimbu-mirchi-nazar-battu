@@ -105,8 +105,17 @@ function LegalPageViewer({
   );
 }
 
+// Check if current URL is the secret admin path
+function isAdminUrl(): boolean {
+  const hash = window.location.hash;
+  const search = window.location.search;
+  return hash === "#/admin-panel" || search.includes("admin-panel");
+}
+
 export default function App() {
-  const [currentView, setCurrentView] = useState<View>("home");
+  const [currentView, setCurrentView] = useState<View>(() =>
+    isAdminUrl() ? "admin" : "home",
+  );
   const [adminSection, setAdminSection] = useState<AdminSection>("dashboard");
   const [legalSlug, setLegalSlug] = useState("terms");
   const [popupDismissed, setPopupDismissed] = useState(false);
@@ -202,7 +211,10 @@ export default function App() {
             </Button>
             <button
               type="button"
-              onClick={() => setCurrentView("home")}
+              onClick={() => {
+                window.location.hash = "";
+                setCurrentView("home");
+              }}
               className="mt-3 block mx-auto text-xs"
               style={{ color: "oklch(0.55 0.06 155)" }}
             >
@@ -238,7 +250,10 @@ export default function App() {
             </p>
             <button
               type="button"
-              onClick={() => setCurrentView("home")}
+              onClick={() => {
+                window.location.hash = "";
+                setCurrentView("home");
+              }}
               className="text-sm"
               style={{ color: "oklch(0.62 0.18 45)" }}
             >
@@ -255,7 +270,10 @@ export default function App() {
         <AdminLayout
           activeSection={adminSection}
           onSectionChange={setAdminSection}
-          onBack={() => setCurrentView("home")}
+          onBack={() => {
+            window.location.hash = "";
+            setCurrentView("home");
+          }}
         >
           {adminSection === "dashboard" && <Dashboard />}
           {adminSection === "products" && <ProductsManager />}
@@ -329,22 +347,6 @@ export default function App() {
 
         <Footer onNavigate={navigate} />
       </div>
-
-      {/* Admin Access FAB - visible when logged in */}
-      {isLoggedIn && (currentView as View) !== "admin" && (
-        <button
-          type="button"
-          onClick={() => navigate("admin")}
-          className="fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-full shadow-lg text-xs font-semibold flex items-center gap-2 transition-all hover:scale-105"
-          style={{
-            background: "oklch(0.16 0.05 155)",
-            color: "oklch(0.78 0.18 75)",
-            border: "1px solid oklch(0.25 0.06 155)",
-          }}
-        >
-          🛡️ Admin Panel
-        </button>
-      )}
     </>
   );
 }

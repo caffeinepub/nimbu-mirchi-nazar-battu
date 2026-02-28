@@ -6,6 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { useMutation } from "@tanstack/react-query";
 import {
+  Banknote,
   Calendar,
   CreditCard,
   LogIn,
@@ -20,7 +21,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 import { mockBackend } from "../../mocks/backend";
-import { type OrderType, useCartStore } from "../../stores/cartStore";
+import {
+  type OrderType,
+  type PaymentMethod,
+  useCartStore,
+} from "../../stores/cartStore";
 import {
   formatDate,
   getNext4Saturdays,
@@ -38,10 +43,12 @@ export function CartPage() {
   const {
     items,
     orderType,
+    paymentMethod,
     updateQuantity,
     removeItem,
     clearCart,
     setOrderType,
+    setPaymentMethod,
     totalAmount,
   } = useCartStore();
   const { identity } = useInternetIdentity();
@@ -70,19 +77,29 @@ export function CartPage() {
         "OneTime",
         deliveryDate,
       );
+
+      if (paymentMethod === "COD") {
+        return { type: "cod" as const };
+      }
+
       const checkoutUrl = await mockBackend.createStripeCheckout(
         order.id,
         total,
         orderItems,
       );
-      return checkoutUrl;
+      return { type: "stripe" as const, url: checkoutUrl };
     },
-    onSuccess: (url) => {
-      toast.success("Order create ho gaya! Payment page par ja rahe hain...");
-      setTimeout(() => {
-        window.open(url, "_blank");
+    onSuccess: (result) => {
+      if (result.type === "cod") {
+        toast.success("Order place ho gaya! Delivery par cash dein.");
         clearCart();
-      }, 1000);
+      } else {
+        toast.success("Order create ho gaya! Payment page par ja rahe hain...");
+        setTimeout(() => {
+          window.open(result.url, "_blank");
+          clearCart();
+        }, 1000);
+      }
     },
     onError: () => {
       toast.error("Order create karne mein problem aayi. Phir try karein.");
@@ -106,21 +123,33 @@ export function CartPage() {
         subscriptionTotal,
         deliveryDates,
       );
+
+      if (paymentMethod === "COD") {
+        return { type: "cod" as const };
+      }
+
       const checkoutUrl = await mockBackend.createStripeSubscriptionCheckout(
         sub.id,
         subscriptionTotal,
         orderItems,
       );
-      return checkoutUrl;
+      return { type: "stripe" as const, url: checkoutUrl };
     },
-    onSuccess: (url) => {
-      toast.success(
-        "Subscription create ho gaya! Payment page par ja rahe hain...",
-      );
-      setTimeout(() => {
-        window.open(url, "_blank");
+    onSuccess: (result) => {
+      if (result.type === "cod") {
+        toast.success(
+          "Subscription place ho gaya! Pehli delivery par cash dein.",
+        );
         clearCart();
-      }, 1000);
+      } else {
+        toast.success(
+          "Subscription create ho gaya! Payment page par ja rahe hain...",
+        );
+        setTimeout(() => {
+          window.open(result.url, "_blank");
+          clearCart();
+        }, 1000);
+      }
     },
     onError: () => {
       toast.error(
@@ -419,6 +448,110 @@ export function CartPage() {
                       style={{ color: "oklch(0.5 0.04 60)" }}
                     >
                       4 Saturday deliveries — {formatPrice(subscriptionTotal)}
+                    </p>
+                  </div>
+                </div>
+              </RadioGroup>
+            </CardContent>
+          </Card>
+
+          {/* Payment Method */}
+          <Card
+            className="border"
+            style={{ borderColor: "oklch(0.88 0.04 80)" }}
+          >
+            <CardHeader className="pb-3">
+              <CardTitle
+                className="text-sm font-semibold flex items-center gap-2"
+                style={{ color: "oklch(0.22 0.04 50)" }}
+              >
+                <CreditCard
+                  className="h-4 w-4"
+                  style={{ color: "oklch(0.62 0.18 45)" }}
+                />
+                Payment Method
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RadioGroup
+                value={paymentMethod}
+                onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
+                className="space-y-3"
+              >
+                {/* Stripe */}
+                <div
+                  className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all"
+                  style={{
+                    borderColor:
+                      paymentMethod === "Stripe"
+                        ? "oklch(0.62 0.18 45)"
+                        : "oklch(0.88 0.04 80)",
+                    background:
+                      paymentMethod === "Stripe"
+                        ? "oklch(0.62 0.18 45 / 0.05)"
+                        : "transparent",
+                  }}
+                  onClick={() => setPaymentMethod("Stripe")}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && setPaymentMethod("Stripe")
+                  }
+                >
+                  <RadioGroupItem
+                    value="Stripe"
+                    id="stripe"
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <Label
+                      htmlFor="stripe"
+                      className="text-sm font-medium cursor-pointer flex items-center gap-1.5"
+                      style={{ color: "oklch(0.22 0.04 50)" }}
+                    >
+                      <CreditCard className="h-3.5 w-3.5" /> Online Payment
+                      (Stripe)
+                    </Label>
+                    <p
+                      className="text-xs mt-0.5"
+                      style={{ color: "oklch(0.5 0.04 60)" }}
+                    >
+                      Card, UPI, Net Banking — secure checkout
+                    </p>
+                  </div>
+                </div>
+
+                {/* COD */}
+                <div
+                  className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all"
+                  style={{
+                    borderColor:
+                      paymentMethod === "COD"
+                        ? "oklch(0.5 0.15 140)"
+                        : "oklch(0.88 0.04 80)",
+                    background:
+                      paymentMethod === "COD"
+                        ? "oklch(0.5 0.15 140 / 0.05)"
+                        : "transparent",
+                  }}
+                  onClick={() => setPaymentMethod("COD")}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && setPaymentMethod("COD")
+                  }
+                >
+                  <RadioGroupItem value="COD" id="cod" className="mt-0.5" />
+                  <div>
+                    <Label
+                      htmlFor="cod"
+                      className="text-sm font-medium cursor-pointer flex items-center gap-1.5"
+                      style={{ color: "oklch(0.22 0.04 50)" }}
+                    >
+                      <Banknote className="h-3.5 w-3.5" /> Cash on Delivery
+                      (COD)
+                    </Label>
+                    <p
+                      className="text-xs mt-0.5"
+                      style={{ color: "oklch(0.5 0.04 60)" }}
+                    >
+                      Delivery ke waqt cash dein
                     </p>
                   </div>
                 </div>
