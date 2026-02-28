@@ -105,34 +105,36 @@ function LegalPageViewer({
   );
 }
 
-// Admin PIN - change this to your secret PIN
-const ADMIN_PIN = "nimbu2025";
+// Admin credentials
+const ADMIN_EMAIL = "nimbumirchi.in@gmail.com";
+const ADMIN_PASSWORD = "nimbu2025";
 
-// Check if current URL is the secret admin path
-function isAdminUrl(): boolean {
-  const hash = window.location.hash;
-  const search = window.location.search;
-  return hash === "#/admin-panel" || search.includes("admin-panel");
-}
-
-// Admin PIN Login Screen
+// Admin Email + Password Login Screen
 function AdminPinScreen({
   onSuccess,
   onBack,
 }: { onSuccess: () => void; onBack: () => void }) {
-  const [pin, setPin] = useState("");
-  const [error, setError] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === ADMIN_PIN) {
-      sessionStorage.setItem("adminAuth", "true");
-      onSuccess();
-    } else {
-      setError(true);
-      setPin("");
-      setTimeout(() => setError(false), 2000);
+    const trimmedEmail = email.trim().toLowerCase();
+    if (trimmedEmail !== ADMIN_EMAIL.toLowerCase()) {
+      setError("Yeh email admin ke liye authorized nahi hai.");
+      setTimeout(() => setError(null), 3000);
+      return;
     }
+    if (password !== ADMIN_PASSWORD) {
+      setError("Galat password. Dobara try karein.");
+      setPassword("");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+    sessionStorage.setItem("adminAuth", "true");
+    sessionStorage.setItem("adminEmail", trimmedEmail);
+    onSuccess();
   };
 
   return (
@@ -152,20 +154,30 @@ function AdminPinScreen({
             className="font-display text-2xl font-bold mb-1"
             style={{ color: "oklch(0.92 0.04 85)" }}
           >
-            Admin Panel
+            Admin Login
           </h1>
           <p className="text-sm" style={{ color: "oklch(0.6 0.06 155)" }}>
             Nimbu Mirchi Nazar Battu
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div>
+            <label
+              htmlFor="admin-email"
+              className="block text-xs mb-1.5 font-medium"
+              style={{ color: "oklch(0.65 0.08 155)" }}
+            >
+              Email Address
+            </label>
             <input
-              type="password"
-              placeholder="Admin Password daalen"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
+              id="admin-email"
+              type="email"
+              placeholder="admin@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
               className="w-full px-4 py-3 rounded-xl text-sm outline-none border-2 transition-colors"
               style={{
                 background: "oklch(0.22 0.04 155)",
@@ -175,18 +187,43 @@ function AdminPinScreen({
                   : "oklch(0.3 0.05 155)",
               }}
             />
-            {error && (
-              <p
-                className="text-xs mt-2"
-                style={{ color: "oklch(0.65 0.2 25)" }}
-              >
-                Galat password. Dobara try karein.
-              </p>
-            )}
           </div>
+          <div>
+            <label
+              htmlFor="admin-password"
+              className="block text-xs mb-1.5 font-medium"
+              style={{ color: "oklch(0.65 0.08 155)" }}
+            >
+              Password
+            </label>
+            <input
+              id="admin-password"
+              type="password"
+              placeholder="Password daalen"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none border-2 transition-colors"
+              style={{
+                background: "oklch(0.22 0.04 155)",
+                color: "oklch(0.92 0.04 85)",
+                borderColor: error
+                  ? "oklch(0.55 0.2 25)"
+                  : "oklch(0.3 0.05 155)",
+              }}
+            />
+          </div>
+
+          {error && (
+            <p className="text-xs px-1" style={{ color: "oklch(0.65 0.2 25)" }}>
+              {error}
+            </p>
+          )}
+
           <Button
             type="submit"
-            className="w-full py-3 font-semibold"
+            className="w-full py-3 font-semibold mt-2"
             style={{
               background: "oklch(0.62 0.18 45)",
               color: "white",
@@ -212,15 +249,14 @@ function AdminPinScreen({
 }
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<View>(() =>
-    isAdminUrl() ? "admin" : "home",
-  );
+  const [currentView, setCurrentView] = useState<View>("home");
   const [adminSection, setAdminSection] = useState<AdminSection>("dashboard");
   const [legalSlug, setLegalSlug] = useState("terms");
   const [popupDismissed, setPopupDismissed] = useState(false);
   const [adminAuthenticated, setAdminAuthenticated] = useState(
     () => sessionStorage.getItem("adminAuth") === "true",
   );
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
 
   // CMS data
   const { data: cmsData } = useQuery({
@@ -294,6 +330,28 @@ export default function App() {
     <>
       <Toaster richColors position="top-right" />
 
+      {/* Admin Login Overlay */}
+      <AnimatePresence>
+        {showAdminLogin && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[200]"
+          >
+            <AdminPinScreen
+              onSuccess={() => {
+                setAdminAuthenticated(true);
+                setShowAdminLogin(false);
+                setCurrentView("admin");
+              }}
+              onBack={() => setShowAdminLogin(false)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Popup Announcement */}
       <AnimatePresence>
         {showPopup && (
@@ -351,6 +409,33 @@ export default function App() {
 
         <Footer onNavigate={navigate} />
       </div>
+
+      {/* Floating Admin Button — fixed bottom-left, subtle, only on customer view */}
+      <motion.button
+        type="button"
+        title="Admin Login"
+        aria-label="Admin Login"
+        onClick={() => {
+          if (adminAuthenticated) {
+            setCurrentView("admin");
+          } else {
+            setShowAdminLogin(true);
+          }
+        }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ duration: 0.2 }}
+        className="fixed bottom-4 left-4 z-[150] h-9 w-9 rounded-full flex items-center justify-center shadow-md transition-colors"
+        style={{
+          background: "oklch(0.22 0.04 155)",
+          border: "1px solid oklch(0.32 0.06 155)",
+          color: "oklch(0.55 0.08 155)",
+        }}
+      >
+        <ShieldAlert className="h-4 w-4" />
+      </motion.button>
     </>
   );
 }
