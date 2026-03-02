@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
@@ -10,6 +11,7 @@ import {
   Calendar,
   CreditCard,
   LogIn,
+  MapPin,
   Minus,
   Plus,
   ShoppingBag,
@@ -20,7 +22,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useInternetIdentity } from "../../hooks/useInternetIdentity";
-import { mockBackend } from "../../mocks/backend";
+import { type DeliveryAddress, mockBackend } from "../../mocks/backend";
 import {
   type OrderType,
   type PaymentMethod,
@@ -53,6 +55,15 @@ export function CartPage() {
   } = useCartStore();
   const { identity } = useInternetIdentity();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [address, setAddress] = useState<DeliveryAddress>({
+    name: "",
+    phone: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    pincode: "",
+  });
 
   const isLoggedIn = !!identity && !identity.getPrincipal().isAnonymous();
 
@@ -76,6 +87,7 @@ export function CartPage() {
         total,
         "OneTime",
         deliveryDate,
+        address,
       );
 
       if (paymentMethod === "COD") {
@@ -122,6 +134,7 @@ export function CartPage() {
         orderItems,
         subscriptionTotal,
         deliveryDates,
+        address,
       );
 
       if (paymentMethod === "COD") {
@@ -158,13 +171,40 @@ export function CartPage() {
     },
   });
 
-  const handleCheckout = () => {
+  const handleProceedToAddress = () => {
     if (!isLoggedIn) {
       toast.error("Pehle login karein");
       return;
     }
     if (items.length === 0) {
       toast.error("Cart khaali hai");
+      return;
+    }
+    setShowAddressForm(true);
+  };
+
+  const handleCheckout = () => {
+    if (!address.name.trim()) {
+      toast.error("Naam daalna zaroori hai");
+      return;
+    }
+    if (!address.phone.trim() || address.phone.replace(/\D/g, "").length < 10) {
+      toast.error("Sahi phone number daalen (10 digits)");
+      return;
+    }
+    if (!address.addressLine1.trim()) {
+      toast.error("Address daalna zaroori hai");
+      return;
+    }
+    if (!address.city.trim()) {
+      toast.error("Sheher ka naam daalen");
+      return;
+    }
+    if (
+      !address.pincode.trim() ||
+      address.pincode.replace(/\D/g, "").length < 6
+    ) {
+      toast.error("Sahi 6-digit pincode daalen");
       return;
     }
     setIsCheckingOut(true);
@@ -675,6 +715,148 @@ export function CartPage() {
             </CardContent>
           </Card>
 
+          {/* Address Form */}
+          {showAddressForm && isLoggedIn && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card
+                className="border"
+                style={{
+                  borderColor: "oklch(0.62 0.18 45)",
+                  background: "oklch(0.62 0.18 45 / 0.04)",
+                }}
+              >
+                <CardHeader className="pb-3">
+                  <CardTitle
+                    className="text-sm font-semibold flex items-center gap-2"
+                    style={{ color: "oklch(0.22 0.04 50)" }}
+                  >
+                    <MapPin
+                      className="h-4 w-4"
+                      style={{ color: "oklch(0.62 0.18 45)" }}
+                    />
+                    Delivery Address
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label
+                        className="text-xs font-medium"
+                        style={{ color: "oklch(0.35 0.04 50)" }}
+                      >
+                        Aapka Naam *
+                      </Label>
+                      <Input
+                        placeholder="Poora naam"
+                        value={address.name}
+                        onChange={(e) =>
+                          setAddress((a) => ({ ...a, name: e.target.value }))
+                        }
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label
+                        className="text-xs font-medium"
+                        style={{ color: "oklch(0.35 0.04 50)" }}
+                      >
+                        Phone Number *
+                      </Label>
+                      <Input
+                        placeholder="10-digit number"
+                        value={address.phone}
+                        onChange={(e) =>
+                          setAddress((a) => ({ ...a, phone: e.target.value }))
+                        }
+                        className="h-8 text-xs"
+                        maxLength={10}
+                        type="tel"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label
+                      className="text-xs font-medium"
+                      style={{ color: "oklch(0.35 0.04 50)" }}
+                    >
+                      Ghar/Dukaan ka Address *
+                    </Label>
+                    <Input
+                      placeholder="Gali, Mohalla, Flat no."
+                      value={address.addressLine1}
+                      onChange={(e) =>
+                        setAddress((a) => ({
+                          ...a,
+                          addressLine1: e.target.value,
+                        }))
+                      }
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label
+                      className="text-xs font-medium"
+                      style={{ color: "oklch(0.5 0.04 60)" }}
+                    >
+                      Address Line 2 (Optional)
+                    </Label>
+                    <Input
+                      placeholder="Landmark, Colony name"
+                      value={address.addressLine2}
+                      onChange={(e) =>
+                        setAddress((a) => ({
+                          ...a,
+                          addressLine2: e.target.value,
+                        }))
+                      }
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label
+                        className="text-xs font-medium"
+                        style={{ color: "oklch(0.35 0.04 50)" }}
+                      >
+                        Sheher *
+                      </Label>
+                      <Input
+                        placeholder="Delhi, Mumbai..."
+                        value={address.city}
+                        onChange={(e) =>
+                          setAddress((a) => ({ ...a, city: e.target.value }))
+                        }
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label
+                        className="text-xs font-medium"
+                        style={{ color: "oklch(0.35 0.04 50)" }}
+                      >
+                        Pincode *
+                      </Label>
+                      <Input
+                        placeholder="6-digit pincode"
+                        value={address.pincode}
+                        onChange={(e) =>
+                          setAddress((a) => ({ ...a, pincode: e.target.value }))
+                        }
+                        className="h-8 text-xs"
+                        maxLength={6}
+                        type="number"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
           {/* Checkout Button */}
           {!isLoggedIn ? (
             <div
@@ -698,6 +880,20 @@ export function CartPage() {
                 Internet Identity se secure login karein
               </p>
             </div>
+          ) : !showAddressForm ? (
+            <Button
+              className="w-full gap-2 font-semibold"
+              size="lg"
+              onClick={handleProceedToAddress}
+              style={{
+                background: "oklch(0.62 0.18 45)",
+                color: "white",
+                border: "none",
+              }}
+            >
+              <MapPin className="h-5 w-5" />
+              Delivery Address Daalen
+            </Button>
           ) : (
             <Button
               className="w-full gap-2 font-semibold"

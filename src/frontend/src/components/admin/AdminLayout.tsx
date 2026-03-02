@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   BookOpen,
@@ -12,6 +13,7 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { mockBackend } from "../../mocks/backend";
 
 type AdminSection =
   | "dashboard"
@@ -52,6 +54,15 @@ export function AdminLayout({
   onBack,
 }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const { data: allOrders } = useQuery({
+    queryKey: ["allOrders"],
+    queryFn: () => mockBackend.getAllOrders(),
+    refetchInterval: 30000, // poll every 30 seconds
+  });
+
+  const pendingCount =
+    allOrders?.filter((o) => o.status === "Pending").length ?? 0;
 
   return (
     <div
@@ -126,12 +137,31 @@ export function AdminLayout({
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 {item.label}
-                {isActive && (
+                {item.section === "orders" && pendingCount > 0 && (
+                  <span
+                    className="ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none"
+                    style={{
+                      background: "oklch(0.55 0.22 25)",
+                      color: "white",
+                    }}
+                  >
+                    {pendingCount}
+                  </span>
+                )}
+                {isActive && item.section !== "orders" && (
                   <div
                     className="ml-auto h-1.5 w-1.5 rounded-full"
                     style={{ background: "oklch(0.78 0.18 75)" }}
                   />
                 )}
+                {isActive &&
+                  item.section === "orders" &&
+                  pendingCount === 0 && (
+                    <div
+                      className="ml-auto h-1.5 w-1.5 rounded-full"
+                      style={{ background: "oklch(0.78 0.18 75)" }}
+                    />
+                  )}
               </button>
             );
           })}
