@@ -52,6 +52,9 @@ export function OrdersManager() {
   const { data: orders, isLoading } = useQuery({
     queryKey: ["allOrders"],
     queryFn: () => mockBackend.getAllOrders(),
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchInterval: 15000, // auto-refresh every 15 seconds
   });
 
   const updateStatusMutation = useMutation({

@@ -57,6 +57,9 @@ export function SubscriptionsManager() {
   const { data: subscriptions, isLoading } = useQuery({
     queryKey: ["allSubscriptions"],
     queryFn: () => mockBackend.getAllSubscriptions(),
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchInterval: 15000,
   });
 
   const cancelMutation = useMutation({

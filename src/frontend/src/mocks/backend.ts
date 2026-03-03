@@ -416,6 +416,28 @@ function persistNextIds() {
 
 let _isAdmin = false;
 
+// ─── Reload state from localStorage (call before any read) ───────────────
+
+function reloadFromStorage() {
+  const freshProducts = loadFromStorage<Product[]>(STORAGE_KEYS.products);
+  if (freshProducts) products = freshProducts;
+  const freshOrders = loadFromStorage<Order[]>(STORAGE_KEYS.orders);
+  if (freshOrders) orders = freshOrders;
+  const freshSubs = loadFromStorage<Subscription[]>(STORAGE_KEYS.subscriptions);
+  if (freshSubs) subscriptions = freshSubs;
+  const freshCms = loadFromStorage<CmsData>(STORAGE_KEYS.cms);
+  if (freshCms) cmsData = freshCms;
+  const freshLegal = loadFromStorage<Record<string, string>>(STORAGE_KEYS.legal);
+  if (freshLegal) legalPages = freshLegal;
+  const freshNextProductId = loadFromStorage<bigint>(STORAGE_KEYS.nextProductId);
+  if (freshNextProductId) nextProductId = freshNextProductId;
+  const freshNextOrderId = loadFromStorage<bigint>(STORAGE_KEYS.nextOrderId);
+  if (freshNextOrderId) nextOrderId = freshNextOrderId;
+  const freshNextSubId = loadFromStorage<bigint>(STORAGE_KEYS.nextSubId);
+  if (freshNextSubId) nextSubId = freshNextSubId;
+  recalcNextIds();
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────
 
 export const mockBackend = {
@@ -436,16 +458,19 @@ export const mockBackend = {
 
   // Products
   getProducts: async (): Promise<Product[]> => {
+    reloadFromStorage();
     await delay(300);
     return [...products.filter((p) => p.isActive)];
   },
 
   getAllProductsAdmin: async (): Promise<Product[]> => {
+    reloadFromStorage();
     await delay(300);
     return [...products];
   },
 
   getProductsByCategory: async (cat: string): Promise<Product[]> => {
+    reloadFromStorage();
     await delay(200);
     return products.filter((p) => p.isActive && p.category === cat);
   },
@@ -559,17 +584,20 @@ export const mockBackend = {
   },
 
   getMyOrders: async (): Promise<Order[]> => {
+    reloadFromStorage();
     await delay(300);
     return [...orders].sort((a, b) => Number(b.createdAt - a.createdAt));
   },
 
   getOrder: async (id: bigint): Promise<[] | [Order]> => {
+    reloadFromStorage();
     await delay(200);
     const order = orders.find((o) => o.id === id);
     return order ? [order] : [];
   },
 
   getAllOrders: async (): Promise<Order[]> => {
+    reloadFromStorage();
     await delay(300);
     return [...orders].sort((a, b) => Number(b.createdAt - a.createdAt));
   },
@@ -625,6 +653,7 @@ export const mockBackend = {
   },
 
   getMySubscriptions: async (): Promise<Subscription[]> => {
+    reloadFromStorage();
     await delay(300);
     return [...subscriptions].sort(
       (a, b) => Number(b.createdAt - a.createdAt),
@@ -642,6 +671,7 @@ export const mockBackend = {
   },
 
   getAllSubscriptions: async (): Promise<Subscription[]> => {
+    reloadFromStorage();
     await delay(300);
     return [...subscriptions].sort(
       (a, b) => Number(b.createdAt - a.createdAt),
@@ -696,6 +726,7 @@ export const mockBackend = {
 
   // Dashboard
   getDashboardStats: async (): Promise<DashboardStats> => {
+    reloadFromStorage();
     await delay(300);
     const activeOrders = orders.filter((o) => o.status !== "Cancelled");
     const activeSubs = subscriptions.filter((s) => s.status === "Active");

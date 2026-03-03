@@ -32,11 +32,17 @@ export function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["dashboardStats"],
     queryFn: () => mockBackend.getDashboardStats(),
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchInterval: 15000,
   });
 
   const { data: orders, isLoading: ordersLoading } = useQuery({
     queryKey: ["allOrders"],
     queryFn: () => mockBackend.getAllOrders(),
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchInterval: 15000,
   });
 
   const recentOrders = orders?.slice(0, 5) ?? [];
